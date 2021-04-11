@@ -1,0 +1,36 @@
+{{- $ingress := .Values.backend.ingress -}}
+  {{- if $ingress.enabled -}}
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: {{ template "app.shortname" . }}-backend
+  {{- with $ingress.annotations }}
+  annotations:
+  {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if $ingress.tls }}
+  tls:
+    {{- range $ingress.tls }}
+    - hosts:
+        {{- range .hosts }}
+        - {{ . | quote }}
+      {{- end }}
+      secretName: {{ .secretName }}
+  {{- end }}
+  {{- end }}
+  rules:
+    {{- range $ingress.hosts }}
+    - host: {{ . }}
+      http:
+        paths:
+          - path: {{ $ingress.path }}
+            backend:
+            {{- if eq $.Values.backend.productionSlot "blue" }}
+              serviceName: {{ template "app.shortname" $ }}-backend-blue
+            {{- else }}
+              serviceName: {{ template "app.shortname" $ }}-backend
+            {{- end }}
+              servicePort: {{ $.Values.backend.service.externalPort }}
+  {{- end }}
+  {{- end -}}
